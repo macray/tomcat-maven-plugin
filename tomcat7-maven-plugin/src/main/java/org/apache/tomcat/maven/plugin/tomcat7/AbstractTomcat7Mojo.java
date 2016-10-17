@@ -18,6 +18,7 @@ package org.apache.tomcat.maven.plugin.tomcat7;
  * under the License.
  */
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.Component;
@@ -66,9 +67,17 @@ public abstract class AbstractTomcat7Mojo
     protected void checkTomcatResponse( TomcatManagerResponse tomcatResponse )
         throws MojoExecutionException
     {
+        boolean deploymentIssue = false;
         int statusCode = tomcatResponse.getStatusCode();
 
-        if ( statusCode >= 400 )
+        String httpResponseBody = tomcatResponse.getHttpResponseBody();
+        if (StringUtils.isNotBlank(httpResponseBody)) {
+            if (httpResponseBody.contains("FAIL") || !httpResponseBody.contains("OK")) {
+                deploymentIssue = true;
+            }
+        }
+
+        if ( statusCode >= 400 || deploymentIssue )
         {
             getLog().error( messagesProvider.getMessage( "tomcatHttpStatusError", statusCode,
                                                          tomcatResponse.getReasonPhrase() ) );
@@ -76,7 +85,7 @@ public abstract class AbstractTomcat7Mojo
             throw new MojoExecutionException(
                 messagesProvider.getMessage( "tomcatHttpStatusError", statusCode,
                                              tomcatResponse.getReasonPhrase() ) + ": "
-                    + tomcatResponse.getHttpResponseBody() );
+                    + httpResponseBody);
         }
     }
 }
